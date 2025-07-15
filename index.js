@@ -17,7 +17,7 @@ function parseGT06Packet(buffer) {
   const imei = buffer.slice(4, 12).toString('hex');
   const protocolNumber = buffer[3];
   let location = null;
-  if (protocolNumber === 0x12) {
+  if (protocolNumber === 0x22) {
     // GPS info starts at byte 13 (index 12)
     // Date/time: 6 bytes (YY MM DD HH mm ss)
     const year = 2000 + buffer[12];

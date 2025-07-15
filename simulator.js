@@ -1,6 +1,6 @@
 const net = require('net');
 
-const HOST = 'localhost';
+const HOST = '3.109.56.93';
 const PORT = 5023;
 
 // Sample GT06 packets (hex strings)
