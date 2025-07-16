@@ -99,12 +99,16 @@ function toHumanReadable(packet) {
 function getResponseForPacket(packet, buffer) {
   // Login packet: protocol number 0x01
   if (packet.protocolNumber === 0x01) {
-    // Response: 78780501[serial][crc][0d0a]
-    // Serial number is at the end of the login packet (2 bytes before CRC)
-    // For GT06, serial is usually at buffer.length - 6 and -5
-    const serial = buffer.slice(buffer.length - 6, buffer.length - 4);
-    // Calculate CRC (here, just echoing back as per protocol for login)
-    // Response: 78 78 05 01 [serial] [crc] 0D 0A
+    // Find serial number (2 bytes before CRC, CRC is 2 bytes before 0D0A)
+    let serial;
+    if (buffer.length >= 12) {
+      // Standard GT06 login packet: serial is at length-6 and length-5
+      serial = buffer.slice(buffer.length - 6, buffer.length - 4);
+    } else {
+      // Fallback: use 0x00 0x01
+      serial = Buffer.from([0x00, 0x01]);
+    }
+    // Build response: 78 78 05 01 [serial] [crc] 0D 0A
     const response = Buffer.alloc(10);
     response.write('7878', 0, 'hex');
     response.writeUInt8(0x05, 2);
