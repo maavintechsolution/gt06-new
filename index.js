@@ -65,17 +65,54 @@ function toHumanReadable(packet) {
 }
 
 // Protocol response (placeholder)
-function getResponseForPacket(packet) {
-  // TODO: Implement correct response per GT06 protocol
-  return Buffer.from('787805010001D9DC0D0A', 'hex'); // Example: login response
+function getResponseForPacket(packet, buffer) {
+  // Login packet: protocol number 0x01
+  if (packet.protocolNumber === 0x01) {
+    // Response: 78780501[serial][crc][0d0a]
+    // Serial number is at the end of the login packet (2 bytes before CRC)
+    // For GT06, serial is usually at buffer.length - 6 and -5
+    const serial = buffer.slice(buffer.length - 6, buffer.length - 4);
+    // Calculate CRC (here, just echoing back as per protocol for login)
+    // Response: 78 78 05 01 [serial] [crc] 0D 0A
+    const response = Buffer.alloc(10);
+    response.write('7878', 0, 'hex');
+    response.writeUInt8(0x05, 2);
+    response.writeUInt8(0x01, 3);
+    serial.copy(response, 4);
+    // Calculate CRC for 0x05 0x01 [serial]
+    const crc = crc16(response.slice(2, 6));
+    response.writeUInt16BE(crc, 6);
+    response.write('0d0a', 8, 'hex');
+    return response;
+  }
+  // ...existing code for other packets...
+  return Buffer.from('787805010001D9DC0D0A', 'hex'); // fallback
+}
+
+// CRC-16-CCITT calculation for GT06
+function crc16(buf) {
+  let crc = 0xFFFF;
+  for (let i = 0; i < buf.length; i++) {
+    crc ^= buf[i] << 8;
+    for (let j = 0; j < 8; j++) {
+      if ((crc & 0x8000) !== 0) {
+        crc = (crc << 1) ^ 0x1021;
+      } else {
+        crc = crc << 1;
+      }
+      crc &= 0xFFFF;
+    }
+  }
+  return crc;
 }
 
 const server = net.createServer(socket => {
   socket.on('data', async data => {
     const packet = parseGT06Packet(data);
     const human = toHumanReadable(packet);
-    if (packet.protocolNumber === 0x12 && packet.location) {
-      // Store only GPS packets with location info
+    // Log the protocol number (packet type) in hex using console.table
+    console.table([{ 'Packet Type': '0x' + packet.protocolNumber.toString(16) }]);
+    if ((packet.protocolNumber === 0x12 || packet.protocolNumber === 0x22) && packet.location) {
       await Location.create({
         imei: packet.imei,
         latitude: packet.location.latitude,
@@ -83,10 +120,11 @@ const server = net.createServer(socket => {
         speed: packet.location.speed,
         timestamp: packet.location.timestamp,
         raw: packet.raw,
-        type: 'GPS'
+        type: 'GPS',
+        deviceType: 'GT06',
       });
     }
-    const response = getResponseForPacket(packet);
+    const response = getResponseForPacket(packet, data);
     socket.write(response);
     console.log('Received and responded to packet from IMEI:', packet.imei);
   });
