@@ -45,24 +45,27 @@ function parseGT06Packet(buffer) {
     const speed = buffer[26];
     location = { latitude, longitude, speed, timestamp };
   } else if (protocolNumber === 0x22) {
-    // For 0x22, the structure is similar to 0x12 for most GT06 devices
-    
-    // Date/time: 6 bytes (YY MM DD HH mm ss)
-    const year = 2000 + buffer[12];
-    const month = buffer[13];
-    const day = buffer[14];
-    const hour = buffer[15];
-    const minute = buffer[16];
-    const second = buffer[17];
-    const timestamp = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
-    // Latitude: 4 bytes BCD, Longitude: 4 bytes BCD
-    const latBcd = buffer.slice(18, 22);
-    const lngBcd = buffer.slice(22, 26);
-    const latitude = bcdToInt(latBcd) / 1000000;
-    const longitude = bcdToInt(lngBcd) / 1000000;
-    // Speed: 1 byte (for 0x22, usually at 26)
-    const speed = buffer[26];
-    location = { latitude, longitude, speed, timestamp };
+    // For protocol 0x22, GT06 extended GPS info
+  // Date/time: 6 bytes (YY MM DD HH mm ss) at index 4-9
+  const year = 2000 + buffer[4];
+  const month = buffer[5];
+  const day = buffer[6];
+  const hour = buffer[7];
+  const minute = buffer[8];
+  const second = buffer[9];
+  const datetime = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`;
+  // Satellites: buffer[10] (high nibble = GPS, low nibble = GSM)
+  const satellites = buffer[10] & 0x0F;
+  // Latitude (4 bytes, 11-14), Longitude (4 bytes, 15-18)
+  const latRaw = buffer.readUInt32BE(11);
+  const lngRaw = buffer.readUInt32BE(15);
+  const latitude = latRaw / 1800000;
+  const longitude = lngRaw / 1800000;
+  // Speed (1 byte, 19)
+  const speed = buffer[19];
+  // Course & status (2 bytes, 20-21)
+  const courseStatus = buffer.readUInt16BE(20);
+  return { datetime, satellites, latitude, longitude, speed, courseStatus };
   }
   return {
     imei,
