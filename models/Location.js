@@ -8,7 +8,8 @@ const locationSchema = new mongoose.Schema({
   timestamp: Date,
   raw: String,
   type: String,
-    deviceType: String,
+  deviceType: String,
+  protocol: { type: String }, // Store protocol as string, e.g., '0x12' or '0x22'
 }, { timestamps: true });
 
 module.exports = mongoose.model('Location', locationSchema);

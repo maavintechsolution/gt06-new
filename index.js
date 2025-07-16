@@ -153,6 +153,7 @@ const server = net.createServer(socket => {
         raw: packet.raw,
         type: 'GPS',
         deviceType: 'GT06',
+        protocol: '0x' + packet.protocolNumber.toString(16), // Save protocol as string
       });
     }
     const response = getResponseForPacket(packet, data);
