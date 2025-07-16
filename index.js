@@ -13,12 +13,12 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
 
 // GT06 packet parsing (placeholder, extend for all types)
 function parseGT06Packet(buffer) {
-  // GT06 protocol: GPS data packet type is 0x12
   const imei = buffer.slice(4, 12).toString('hex');
   const protocolNumber = buffer[3];
   let location = null;
-  if (protocolNumber === 0x22) {
-    // GPS info starts at byte 13 (index 12)
+  // Accept both 0x12 and 0x22 as GPS/location packets
+  if (protocolNumber === 0x12 || protocolNumber === 0x22) {
+    // For 0x22, the structure is similar to 0x12 for most GT06 devices
     // Date/time: 6 bytes (YY MM DD HH mm ss)
     const year = 2000 + buffer[12];
     const month = buffer[13];
@@ -32,7 +32,7 @@ function parseGT06Packet(buffer) {
     const lngRaw = buffer.readUInt32BE(22);
     const latitude = latRaw / 1800000;
     const longitude = lngRaw / 1800000;
-    // Speed: 1 byte
+    // Speed: 1 byte (for 0x22, usually at 26)
     const speed = buffer[26];
     location = { latitude, longitude, speed, timestamp };
   }
@@ -50,7 +50,7 @@ function toHumanReadable(packet) {
     imei: packet.imei,
     raw: packet.raw,
   };
-  if (packet.protocolNumber === 0x12 && packet.location) {
+  if ((packet.protocolNumber === 0x12 || packet.protocolNumber === 0x22) && packet.location) {
     return {
       ...base,
       type: 'GPS',
